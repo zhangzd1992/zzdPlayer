@@ -6,7 +6,11 @@
 #define CUSPLAYER_AUDIOCHANNEL_H
 
 
-class AudioChannel {
+#include "BaseChannel.h"
+
+class AudioChannel: BaseChannel {
+public:
+    AudioChannel(int id, JavaCallHelper *javaCallHelper, AVCodecContext *avCodecContext);
 
 };
 

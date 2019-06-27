@@ -28,6 +28,10 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm,void *unused) {
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_example_zhangzd_cusplayer_LivePlayer_native_1start(JNIEnv *env, jobject instance) {
+    //    正是进入播放状态
+    if(cusPlayerFFmpeg) {
+        cusPlayerFFmpeg->start();
+    }
 
 
 }

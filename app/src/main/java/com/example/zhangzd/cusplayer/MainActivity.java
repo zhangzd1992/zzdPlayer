@@ -58,6 +58,7 @@ public class MainActivity extends AppCompatActivity implements LivePlayer.OnPrep
 
     @Override
     public void onPrepare() {
+        //初始化FFmpeg成功后，开始解析视频
         livePlayer.start();
     }
 }

@@ -2,7 +2,7 @@
 // Created by zhangzd on 2019-06-26.
 //
 
-#include <opencl-c.h>
+
 #include "CusPlayerFFmpeg.h"
 #include "macro.h"
 
@@ -12,16 +12,24 @@ extern "C" {
 }
 
 
+
+CusPlayerFFmpeg::CusPlayerFFmpeg(const char *dataSource, JavaCallHelper *pHelper) {
+    url = new char[strlen(dataSource) + 1];
+    strcpy(url, dataSource);
+    this->javaCallHelper = pHelper;
+}
+
 void *prepareFFmpeg_(void *args) {
     CusPlayerFFmpeg *cusPlayerFFmpeg = static_cast<CusPlayerFFmpeg *>(args);
     cusPlayerFFmpeg->prepareFfmpeg();
+    return 0;
 }
 
 
 void CusPlayerFFmpeg::prepareFfmpeg() {
     //执行在子线程中的方法，可以调用CusPlayerFFmpeg的成员
     avformat_network_init();
-    AVFormatContext *avFormatContext = avformat_alloc_context();
+    avFormatContext = avformat_alloc_context();
     AVDictionary *opts = NULL;
     av_dict_set(&opts,"timeout","3000000",0);
     int ret = avformat_open_input(&avFormatContext,url,NULL,&opts);
@@ -79,15 +87,24 @@ void CusPlayerFFmpeg::prepareFfmpeg() {
 
         if(codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
             //视频
-
-
-
+            audioChannel = new AudioChannel(i,javaCallHelper,codecContext);
         }else if(codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
            //音频
+            videoChannel = new VideoChannel(i,javaCallHelper,codecContext);
+        }
 
 
+        if(!audioChannel && !videoChannel) {
+            //视频处理和音频处理类都为空时，调用Java层报错，并退出
+            if(javaCallHelper) {
+                javaCallHelper->onError(THREAD_CHILD,FFMPEG_NOMEDIA);
+            }
+            return;
+        }
 
 
+        if(javaCallHelper) {
+            javaCallHelper->onParpare(THREAD_CHILD);
         }
     }
 }
@@ -97,11 +114,70 @@ void CusPlayerFFmpeg::prepare() {
 }
 
 CusPlayerFFmpeg::~CusPlayerFFmpeg() {
+}
+
+void *startThread(void *args) {
+    CusPlayerFFmpeg *cusPlayerFFmpeg = static_cast<CusPlayerFFmpeg *>(args);
+    cusPlayerFFmpeg->play();
+    return 0;
+}
+
+
+void CusPlayerFFmpeg::start() {
+    isPlaying = true;
+    if(videoChannel) {
+        videoChannel->play();
+    }
+    if (audioChannel)
+    {
+        audioChannel->play();
+    }
+    //开线程将流解析成packet，然后根据类型，放入到对应的音频视频packet队列中
+    pthread_create(&pid_decode,NULL,startThread,this);
 
 }
 
-CusPlayerFFmpeg::CusPlayerFFmpeg(const char *dataSource, JavaCallHelper *pHelper) {
-    url = new char[strlen(dataSource) + 1];
-    strcpy(url, dataSource);
-    this->javaCallHelper = pHelper;
+//真正的解码操作在此处实现
+void CusPlayerFFmpeg::play() {
+    int ret = 0;
+    //死循环一直从流中读取数据，解析成packet
+    while (isPlaying) {
+        if(audioChannel && audioChannel->pkt_queue.size() > 100){
+            av_usleep(1000 * 10);
+            continue;
+        }
+
+        if(videoChannel && videoChannel->pkt_queue.size() > 100) {
+            av_usleep(1000 * 10);
+            continue;
+        }
+
+        AVPacket *avPacket = av_packet_alloc();
+        ret = av_read_frame(avFormatContext,avPacket);
+        if (ret == 0){
+            //读取成功
+            if(audioChannel && avPacket->stream_index == audioChannel->channelId) {
+                audioChannel->pkt_queue.enQueue(avPacket);
+            }
+            if(videoChannel && avPacket->stream_index == videoChannel->channelId) {
+                videoChannel->pkt_queue.enQueue(avPacket);
+            }
+
+        } else if(ret == AVERROR_EOF) {
+            //读取完毕 但是不一定播放完毕
+            if (videoChannel->pkt_queue.empty() && videoChannel->frame_queue.empty() &&
+                audioChannel->pkt_queue.empty() && audioChannel->frame_queue.empty()) {
+                break;
+            }
+            //因为seek 的存在，就算读取完毕，依然要循环 去执行av_read_frame(否则seek了没用...)
+        } else {
+            break;
+        }
+    }
+
+    //跳出循环代表播放结束，则设置标志位位false ，停止播放音频和视频
+    isPlaying = false;
+    videoChannel->stop();
+    audioChannel->stop();
 }
+

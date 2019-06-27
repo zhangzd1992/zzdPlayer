@@ -6,6 +6,8 @@
 #define CUSPLAYER_CUSPLAYERFFMPEG_H
 #include <pthread.h>
 #include "JavaCallHelper.h"
+#include "VideoChannel.h"
+#include "AudioChannel.h"
 
 
 extern "C" {
@@ -23,10 +25,20 @@ public:
     void prepareFfmpeg();
     void prepare();
 
+    void start();
+
+    void play();
+
 private:
     char * url;
     pthread_t pid_prepare;    //初始化ffmpeg 线程索引
+    pthread_t pid_decode;     //解码子线程索引
     JavaCallHelper *javaCallHelper;
+    VideoChannel *videoChannel;
+    AudioChannel *audioChannel;
+    bool isPlaying;
+    AVFormatContext *avFormatContext;
+
 
 };
 
