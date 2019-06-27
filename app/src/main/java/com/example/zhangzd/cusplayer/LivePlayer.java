@@ -15,6 +15,9 @@ public class LivePlayer implements SurfaceHolder.Callback{
 
     private SurfaceHolder surfaceHolder;
     private String dataSource;
+    private OnPrepareListener prepareListener;
+    private OnErrorListener errorListener;
+    private OnProgressListener progressListener;
 
     public LivePlayer(SurfaceHolder holder) {
         if(null != this.surfaceHolder) {
@@ -40,10 +43,50 @@ public class LivePlayer implements SurfaceHolder.Callback{
     }
 
     public void start() {
+        native_start();
+    }
 
+    public interface OnPrepareListener {
+         void onPrepare();
+    }
+    public interface OnErrorListener {
+        void onError(int errorCode);
+    }
+
+    public interface OnProgressListener {
+        void onProgress(int progress);
     }
 
 
+    public void setOnPrepareListener(OnPrepareListener listener) {
+        this.prepareListener = listener;
+    }
+    public void setOnErrorListener(OnErrorListener listener) {
+        this.errorListener = listener;
+    }
+
+    public void setOnProgressListener(OnProgressListener listener) {
+        this.progressListener = listener;
+    }
+
+    public void onPrepare(){
+        if (null != prepareListener) {
+            prepareListener.onPrepare();
+        }
+    }
+
+    public void onError(int errorCode) {
+        if (null != errorListener) {
+            errorListener.onError(errorCode);
+        }
+    }
+
+
+    public void onProgress(int progerss){
+        if (null != progressListener) {
+            progressListener.onProgress(progerss);
+        }
+    }
 
 
 

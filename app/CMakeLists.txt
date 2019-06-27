@@ -3,7 +3,8 @@ file(GLOB SOURCE src/main/cpp/*.cpp )
 add_library(
         native-lib
         SHARED
-        ${SOURCE})
+        ${SOURCE}
+)
 
 include_directories("src/main/cpp/include")
 find_library(
