@@ -39,18 +39,6 @@ public:
             frame = 0;
         }
     }
-
-
-    virtual void play() =0;
-    virtual void stop() =0 ;
-
-    SafeQueue<AVPacket *> pkt_queue;
-    SafeQueue<AVFrame  *> frame_queue;
-    AVCodecContext *avCodecContext;
-    JavaCallHelper *javaCallHelper;
-    volatile int channelId;
-    void bool isPlaying;
-
     virtual ~BaseChannel(){
         if(avCodecContext) {
             avcodec_close(avCodecContext);
@@ -60,6 +48,17 @@ public:
         pkt_queue.clear();
         frame_queue.clear();
     }
+    virtual void play() =0;
+    virtual void stop() =0 ;
+
+    SafeQueue<AVPacket *> pkt_queue;
+    SafeQueue<AVFrame *> frame_queue;
+    volatile int channelId;
+    volatile bool isPlaying  ;
+    AVCodecContext *avCodecContext;
+    JavaCallHelper *javaCallHelper;
+    AVRational time_base;
+    double clock = 0;
 
 
 };

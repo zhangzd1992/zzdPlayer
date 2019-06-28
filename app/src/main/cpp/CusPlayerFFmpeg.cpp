@@ -46,8 +46,6 @@ void CusPlayerFFmpeg::prepareFfmpeg() {
         return;
     }
 
-
-
     for (int i = 0; i < avFormatContext->nb_streams; ++i) {
         AVStream *stream = avFormatContext->streams[i];
         //获取解码器参数
@@ -85,27 +83,25 @@ void CusPlayerFFmpeg::prepareFfmpeg() {
         }
 
 
-        if(codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+        if(codecpar->codec_type ==  AVMEDIA_TYPE_AUDIO) {
             //视频
-            audioChannel = new AudioChannel(i,javaCallHelper,codecContext);
-        }else if(codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+//            audioChannel = new AudioChannel(i,javaCallHelper,codecContext);
+        }else if(codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
            //音频
             videoChannel = new VideoChannel(i,javaCallHelper,codecContext);
+            videoChannel->setRenderFrame(renderFrame);
         }
-
-
-        if(!audioChannel && !videoChannel) {
-            //视频处理和音频处理类都为空时，调用Java层报错，并退出
-            if(javaCallHelper) {
-                javaCallHelper->onError(THREAD_CHILD,FFMPEG_NOMEDIA);
-            }
-            return;
-        }
-
-
+    }
+    if(!audioChannel && !videoChannel) {
+        //视频处理和音频处理类都为空时，调用Java层报错，并退出
         if(javaCallHelper) {
-            javaCallHelper->onParpare(THREAD_CHILD);
+            javaCallHelper->onError(THREAD_CHILD,FFMPEG_NOMEDIA);
         }
+        return;
+    }
+
+    if(javaCallHelper) {
+        javaCallHelper->onParpare(THREAD_CHILD);
     }
 }
 
@@ -130,7 +126,7 @@ void CusPlayerFFmpeg::start() {
     }
     if (audioChannel)
     {
-        audioChannel->play();
+//        audioChannel->play();
     }
     //开线程将流解析成packet，然后根据类型，放入到对应的音频视频packet队列中
     pthread_create(&pid_decode,NULL,startThread,this);
@@ -158,14 +154,13 @@ void CusPlayerFFmpeg::play() {
             //读取成功
             if(audioChannel && avPacket->stream_index == audioChannel->channelId) {
                 audioChannel->pkt_queue.enQueue(avPacket);
-            }
-            if(videoChannel && avPacket->stream_index == videoChannel->channelId) {
+            }else if(videoChannel && avPacket->stream_index == videoChannel->channelId) {
                 videoChannel->pkt_queue.enQueue(avPacket);
             }
 
         } else if(ret == AVERROR_EOF) {
             //读取完毕 但是不一定播放完毕
-            if (videoChannel->pkt_queue.empty() && videoChannel->frame_queue.empty() &&
+            if (videoChannel && videoChannel->pkt_queue.empty() && videoChannel && videoChannel->frame_queue.empty() &&
                 audioChannel->pkt_queue.empty() && audioChannel->frame_queue.empty()) {
                 break;
             }
@@ -177,7 +172,17 @@ void CusPlayerFFmpeg::play() {
 
     //跳出循环代表播放结束，则设置标志位位false ，停止播放音频和视频
     isPlaying = false;
-    videoChannel->stop();
-    audioChannel->stop();
+    if (videoChannel) {
+        videoChannel->stop();
+    }
+    if(audioChannel) {
+        audioChannel->stop();
+    }
+
+}
+
+void CusPlayerFFmpeg::setRenderFrame(RenderFrame renderFrame) {
+    this->renderFrame = renderFrame;
+
 }
 

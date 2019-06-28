@@ -28,6 +28,7 @@ public:
     void start();
 
     void play();
+    void setRenderFrame(RenderFrame renderFrame);
 
 private:
     char * url;
@@ -38,6 +39,7 @@ private:
     AudioChannel *audioChannel;
     bool isPlaying;
     AVFormatContext *avFormatContext;
+    RenderFrame renderFrame;
 
 
 };

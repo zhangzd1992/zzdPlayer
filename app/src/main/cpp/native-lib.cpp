@@ -23,6 +23,26 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm,void *unused) {
 
 
 
+//将rgb 数据渲染到window
+void renderFrame(uint8_t *data,int lineSize,int width,int height) {
+
+    if(window) {
+        ANativeWindow_setBuffersGeometry(window,width,height,WINDOW_FORMAT_RGBA_8888);
+        ANativeWindow_Buffer outBuffer;
+        if (ANativeWindow_lock(window,&outBuffer,0)) {
+            ANativeWindow_release(window);
+            window = 0;
+            return;
+        }
+        uint8_t * window_data = static_cast<uint8_t *>(outBuffer.bits);
+        int window_lisze = outBuffer.stride * 4;
+        for (int i = 0; i < outBuffer.height; ++i) {
+            memcpy(window_data + i * window_lisze, data + i * lineSize, static_cast<size_t>(window_lisze));
+        }
+        ANativeWindow_unlockAndPost(window);
+    }
+}
+
 
 
 
@@ -59,6 +79,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_example_zhangzd_cusplayer_LivePlayer_
     const char *dataSource = env->GetStringUTFChars(dataSource_, 0);
     javaCallHelper = new JavaCallHelper(javaVM, env, instance);
     cusPlayerFFmpeg = new CusPlayerFFmpeg(dataSource, javaCallHelper);
+    cusPlayerFFmpeg->setRenderFrame(renderFrame);
     //初始化ffmpeg
     cusPlayerFFmpeg->prepare();
 

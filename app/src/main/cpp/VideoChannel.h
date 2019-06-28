@@ -11,10 +11,11 @@
 
 
 extern "C" {
-#include <libavutil/time.h>
+#include "libavutil/time.h"
+#include "libswscale/swscale.h"
 }
-
-class VideoChannel : BaseChannel {
+typedef void (*RenderFrame)(uint8_t *,int ,int ,int);
+class VideoChannel : public BaseChannel {
 public:
     VideoChannel(int id, JavaCallHelper *javaCallHelper, AVCodecContext *avCodecContext);
 
@@ -23,8 +24,13 @@ public:
 
     void decodePacket();
 
+    void synchronizeFrame();
+    void setRenderFrame(RenderFrame renderFrame);
+
 private:
     pthread_t pid_decode;  //解码子线程的索引
+    pthread_t pid_renering; //渲染线程索引
+    RenderFrame renderFrame;
 };
 
 

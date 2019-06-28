@@ -8,9 +8,12 @@
 
 #include "BaseChannel.h"
 
-class AudioChannel: BaseChannel {
+class AudioChannel: public BaseChannel {
 public:
     AudioChannel(int id, JavaCallHelper *javaCallHelper, AVCodecContext *avCodecContext);
+    virtual void play();
+
+    virtual void stop();
 
 };
 

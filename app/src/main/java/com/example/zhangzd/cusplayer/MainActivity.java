@@ -2,12 +2,15 @@ package com.example.zhangzd.cusplayer;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.TextView;
+
+import java.io.File;
 
 public class MainActivity extends AppCompatActivity implements LivePlayer.OnPrepareListener {
     LivePlayer livePlayer;
@@ -21,7 +24,8 @@ public class MainActivity extends AppCompatActivity implements LivePlayer.OnPrep
         SurfaceView surfaceView = findViewById(R.id.surfaceView);
         checkPermission();
         livePlayer = new LivePlayer(surfaceView.getHolder());
-        livePlayer.setDataSource("");
+        File file = new File(Environment.getExternalStorageDirectory(), "input2.mp4");
+        livePlayer.setDataSource(file.getAbsolutePath());
         livePlayer.setOnPrepareListener(this);
     }
 
