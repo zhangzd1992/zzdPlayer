@@ -88,6 +88,11 @@ public class LivePlayer implements SurfaceHolder.Callback{
         }
     }
 
+    public int getDuration() {
+        return native_getDuration();
+    }
+
+
 
 
     @Override
@@ -107,4 +112,5 @@ public class LivePlayer implements SurfaceHolder.Callback{
     public native void native_start();
     public native void native_set_surface(Surface surface);
     public native void native_prepare(String dataSource);
+    public native int native_getDuration();
 }

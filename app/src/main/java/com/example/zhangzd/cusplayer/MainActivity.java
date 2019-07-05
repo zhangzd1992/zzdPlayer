@@ -8,12 +8,15 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.io.File;
 
-public class MainActivity extends AppCompatActivity implements LivePlayer.OnPrepareListener {
+public class MainActivity extends AppCompatActivity implements LivePlayer.OnPrepareListener, SeekBar.OnSeekBarChangeListener {
     LivePlayer livePlayer;
+    SeekBar seekBar;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -22,13 +25,30 @@ public class MainActivity extends AppCompatActivity implements LivePlayer.OnPrep
 
         // Example of a call to a native method
         SurfaceView surfaceView = findViewById(R.id.surfaceView);
+        seekBar = findViewById(R.id.seekBar);
         checkPermission();
         livePlayer = new LivePlayer(surfaceView.getHolder());
         File file = new File(Environment.getExternalStorageDirectory(), "input2.mp4");
         livePlayer.setDataSource(file.getAbsolutePath());
         livePlayer.setOnPrepareListener(this);
+        seekBar.setOnSeekBarChangeListener(this);
     }
 
+    @Override
+    public void onPrepare() {
+        final int duration = livePlayer.getDuration();
+        Log.e("duration","" + duration);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                seekBar.setVisibility(View.VISIBLE);
+                seekBar.setMax(duration);
+            }
+        });
+
+        //初始化FFmpeg成功后，开始解析视频
+        livePlayer.start();
+    }
 
     public void play(View view) {
         livePlayer.prepare();
@@ -61,8 +81,21 @@ public class MainActivity extends AppCompatActivity implements LivePlayer.OnPrep
 
 
     @Override
-    public void onPrepare() {
-        //初始化FFmpeg成功后，开始解析视频
-        livePlayer.start();
+    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+
+    }
+
+
+    @Override
+    public void onStartTrackingTouch(SeekBar seekBar) {
+
+    }
+
+
+    @Override
+    public void onStopTrackingTouch(SeekBar seekBar) {
+        int seekTime = livePlayer.getDuration() * seekBar.getProgress() * 100;
+        livePlayer.set
+
     }
 }

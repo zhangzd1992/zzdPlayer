@@ -1,3 +1,7 @@
+//
+// Created by liuxiang on 2017/10/15.
+//
+
 #ifndef DNRECORDER_SAFE_QUEUE_H
 #define DNRECORDER_SAFE_QUEUE_H
 
@@ -56,7 +60,7 @@ public:
             pthread_cond_signal(&cond);
             pthread_mutex_unlock(&mutex);
         } else {
-//            LOGE("无法加入数据====:%d",q.size());
+            LOGE("无法加入数据====:%d",q.size());
             releaseHandle(new_value);
         }
         pthread_mutex_unlock(&mutex);
@@ -132,7 +136,7 @@ public:
             releaseHandle(value);
             q.pop();
         }
-//        LOGE("清空数据====:%d",q.size());
+        LOGE("清空数据====:%d",q.size());
         pthread_mutex_unlock(&mutex);
 #endif
 

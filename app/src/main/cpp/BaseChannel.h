@@ -16,10 +16,11 @@ extern "C" {
 
 class BaseChannel {
 public:
-    BaseChannel(int id,JavaCallHelper *javaCallHelper,AVCodecContext * avCodecContext)
+    BaseChannel(int id,JavaCallHelper *javaCallHelper,AVCodecContext * avCodecContext,AVRational time_base)
         :channelId(id),
         javaCallHelper(javaCallHelper),
-        avCodecContext(avCodecContext) {
+        avCodecContext(avCodecContext),
+        time_base(time_base){
 
         //设置栈销毁回调
         pkt_queue.setReleaseHandle(releaseAvPacket);
@@ -55,6 +56,7 @@ public:
     SafeQueue<AVFrame *> frame_queue;
     volatile int channelId;
     volatile bool isPlaying  ;
+
     AVCodecContext *avCodecContext;
     JavaCallHelper *javaCallHelper;
     AVRational time_base;

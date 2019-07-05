@@ -45,6 +45,7 @@ void CusPlayerFFmpeg::prepareFfmpeg() {
         }
         return;
     }
+    duration = static_cast<int>(avFormatContext->duration) / 1000000;
 
     for (int i = 0; i < avFormatContext->nb_streams; ++i) {
         AVStream *stream = avFormatContext->streams[i];
@@ -83,13 +84,17 @@ void CusPlayerFFmpeg::prepareFfmpeg() {
         }
 
 
+
         if(codecpar->codec_type ==  AVMEDIA_TYPE_AUDIO) {
-            //视频
-//            audioChannel = new AudioChannel(i,javaCallHelper,codecContext);
+            //音频
+            audioChannel = new AudioChannel(i,javaCallHelper,codecContext,stream->time_base);
         }else if(codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
-           //音频
-            videoChannel = new VideoChannel(i,javaCallHelper,codecContext);
+           //视频
+            AVRational frame_rate=  stream->avg_frame_rate;
+            int fps =av_q2d(frame_rate);
+            videoChannel = new VideoChannel(i, javaCallHelper, codecContext, stream->time_base);
             videoChannel->setRenderFrame(renderFrame);
+            videoChannel->setFps(fps);
         }
     }
     if(!audioChannel && !videoChannel) {
@@ -99,6 +104,11 @@ void CusPlayerFFmpeg::prepareFfmpeg() {
         }
         return;
     }
+
+    if(videoChannel && audioChannel) {
+        videoChannel->setAudioChannel(audioChannel);
+    }
+
 
     if(javaCallHelper) {
         javaCallHelper->onParpare(THREAD_CHILD);
@@ -126,7 +136,7 @@ void CusPlayerFFmpeg::start() {
     }
     if (audioChannel)
     {
-//        audioChannel->play();
+        audioChannel->play();
     }
     //开线程将流解析成packet，然后根据类型，放入到对应的音频视频packet队列中
     pthread_create(&pid_decode,NULL,startThread,this);
@@ -160,7 +170,7 @@ void CusPlayerFFmpeg::play() {
 
         } else if(ret == AVERROR_EOF) {
             //读取完毕 但是不一定播放完毕
-            if (videoChannel && videoChannel->pkt_queue.empty() && videoChannel && videoChannel->frame_queue.empty() &&
+            if (videoChannel && videoChannel->pkt_queue.empty() &&  videoChannel->frame_queue.empty() && audioChannel &&
                 audioChannel->pkt_queue.empty() && audioChannel->frame_queue.empty()) {
                 break;
             }
@@ -184,5 +194,9 @@ void CusPlayerFFmpeg::play() {
 void CusPlayerFFmpeg::setRenderFrame(RenderFrame renderFrame) {
     this->renderFrame = renderFrame;
 
+}
+
+int CusPlayerFFmpeg::getDuration() {
+    return duration;
 }
 

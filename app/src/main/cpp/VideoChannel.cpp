@@ -4,12 +4,32 @@
 
 
 
+
 #include "VideoChannel.h"
 
-VideoChannel::VideoChannel(int id, JavaCallHelper *javaCallHelper, AVCodecContext *avCodecContext)
-        : BaseChannel(id, javaCallHelper, avCodecContext) {
+
+
+void dropFrame(queue<AVFrame *> &q) {
+    if (!q.empty()) {
+        AVFrame *frame = q.front();
+        q.pop();
+        BaseChannel::releaseAvFrame(frame);
+    }
+}
+VideoChannel::VideoChannel(int id, JavaCallHelper *javaCallHelper, AVCodecContext *avCodecContext,
+                           AVRational timeBase)
+        : BaseChannel(id, javaCallHelper, avCodecContext,timeBase) {
+
+//  因为在父类中已经进行了赋值操作，此处不用在进行赋值
+//    this->javaCallHelper = javaCallHelper;
+//    this->avCodecContext = avCodecContext;
+
+
+    frame_queue.setReleaseHandle(releaseAvFrame);
+    frame_queue.setSyncHandle(dropFrame);
 
 }
+
 
 
 void * decode(void * args) {
@@ -51,11 +71,11 @@ void VideoChannel::decodePacket() {
         if (!isPlaying) {
             break;
         }
-        if (ret) {
+        if (!ret) {
             //取数据失败，则停止本次循环，继续取
             continue;
         }
-        avcodec_send_packet(avCodecContext,packet);
+        ret = avcodec_send_packet(avCodecContext,packet);
         releaseAvPacket(packet);  //释放packet
         if(ret == AVERROR(EAGAIN)) {
             //队列暂时没有数据，则挂起
@@ -80,13 +100,16 @@ void VideoChannel::decodePacket() {
 
 //将frame数据转换为rgba 格式
 void VideoChannel::synchronizeFrame() {
-
-    SwsContext * swsContext = sws_getContext(avCodecContext->width,avCodecContext->height,avCodecContext->pix_fmt,avCodecContext->width,avCodecContext->height,AV_PIX_FMT_RGBA,SWS_BILINEAR,0,0,0);
-
+    SwsContext *swsContext = sws_getContext(
+            avCodecContext->width, avCodecContext->height, avCodecContext->pix_fmt,
+            avCodecContext->width, avCodecContext->height, AV_PIX_FMT_RGBA,
+            SWS_BILINEAR, 0, 0, 0);
 
 
     uint8_t *dst_data[4]; //argb
     int dst_linesize[4];
+    av_image_alloc(dst_data, dst_linesize,
+                   avCodecContext->width, avCodecContext->height, AV_PIX_FMT_RGBA, 1);
     AVFrame *frame = NULL;
     while (isPlaying) {
         int ret = frame_queue.deQueue(frame);
@@ -97,15 +120,54 @@ void VideoChannel::synchronizeFrame() {
             continue;
         }
 
-        sws_scale(swsContext,frame->data,frame->linesize,0,frame->height,dst_data,dst_linesize);
+        sws_scale(swsContext,reinterpret_cast<const uint8_t *const *>(frame->data),frame->linesize,0,frame->height,dst_data,dst_linesize);
 
         //数据渲染到nativeWindow上
         if(renderFrame) {
-            renderFrame(dst_data[0],dst_linesize[0],frame->width,frame->height);
+            renderFrame(dst_data[0],dst_linesize[0],avCodecContext->width,avCodecContext->height);
         }
 
-        av_usleep(16 * 1000);
+        if (audioChannel) {
 
+            clock = frame->pts * av_q2d(time_base);
+//        解码时间算进去
+            double frame_delays = 1.0 / fps;
+            double audioClock = audioChannel->clock;
+//        将解码所需要的时间算进去  因为配置差的手机 解码耗时需要多一些
+            double extra_delay = frame->repeat_pict / (2 * fps);
+            double delay = extra_delay+frame_delays;
+
+            double diff = clock - audioClock;
+            LOGE("----相差-------%d ",diff);
+//        视频超前  1  延后
+            if (clock > audioClock) {
+//        视频超前
+                if (diff > 1) {
+                    //差的太久了， 那只能慢慢赶 不然就是卡好久
+                    av_usleep((delay * 2) * 1000000);
+                } else{
+                    av_usleep((delay + diff) * 1000000);
+                }
+            } else{
+//        视频延后 音频超前
+                if (diff > -1) {
+//
+//                不休眠
+                } else if (diff >= -0.05) {
+//                救一下
+//视频需要追赶     丢帧  同步
+                    releaseAvFrame(frame);
+                    frame_queue.sync();
+//                减少延迟时间
+                    //执行同步操作 删除到最近的key frame
+                } else{
+
+
+                }
+
+
+            }
+        }
         releaseAvFrame(frame);
     }
 
@@ -118,6 +180,14 @@ void VideoChannel::synchronizeFrame() {
 
 void VideoChannel::setRenderFrame(RenderFrame renderFrame) {
     this->renderFrame = renderFrame;
+}
+
+void VideoChannel::setFps(int fps) {
+    this->fps = fps;
+}
+
+void VideoChannel::setAudioChannel(AudioChannel *audioChannel) {
+    this->audioChannel = audioChannel;
 }
 
 

@@ -85,4 +85,12 @@ extern "C" JNIEXPORT void JNICALL Java_com_example_zhangzd_cusplayer_LivePlayer_
 
 
     env->ReleaseStringUTFChars(dataSource_, dataSource);
+}extern "C"
+JNIEXPORT jint JNICALL
+Java_com_example_zhangzd_cusplayer_LivePlayer_native_1getDuration(JNIEnv *env, jobject instance) {
+
+    if(cusPlayerFFmpeg) {
+        return cusPlayerFFmpeg->getDuration();
+    }
+    return 0;
 }

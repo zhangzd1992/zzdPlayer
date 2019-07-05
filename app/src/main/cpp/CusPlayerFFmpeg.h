@@ -29,6 +29,7 @@ public:
 
     void play();
     void setRenderFrame(RenderFrame renderFrame);
+    int getDuration();
 
 private:
     char * url;
@@ -40,6 +41,7 @@ private:
     bool isPlaying;
     AVFormatContext *avFormatContext;
     RenderFrame renderFrame;
+    int duration = 0;
 
 
 };
