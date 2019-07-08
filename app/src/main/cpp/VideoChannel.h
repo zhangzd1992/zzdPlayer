@@ -21,6 +21,7 @@ class VideoChannel : public BaseChannel {
 public:
     VideoChannel(int id, JavaCallHelper *javaCallHelper, AVCodecContext *avCodecContext,
                      AVRational rational);
+    ~VideoChannel();
 
     virtual void play();
     virtual void stop();

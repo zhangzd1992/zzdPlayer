@@ -92,5 +92,42 @@ Java_com_example_zhangzd_cusplayer_LivePlayer_native_1getDuration(JNIEnv *env, j
     if(cusPlayerFFmpeg) {
         return cusPlayerFFmpeg->getDuration();
     }
-    return 0;
+}
+
+
+/**
+ * 设置进度
+ */
+extern "C" JNIEXPORT void JNICALL
+Java_com_example_zhangzd_cusplayer_LivePlayer_native_1seek(JNIEnv *env, jobject instance,
+                                                           jint progress) {
+    if (cusPlayerFFmpeg) {
+        cusPlayerFFmpeg->seek(progress);
+    }
+
+
+
+
+}
+extern "C" JNIEXPORT void JNICALL
+Java_com_example_zhangzd_cusplayer_LivePlayer_native_1stop(JNIEnv *env, jobject instance) {
+
+    if (cusPlayerFFmpeg) {
+        cusPlayerFFmpeg->stop();
+    }
+
+
+}
+extern "C" JNIEXPORT void JNICALL
+Java_com_example_zhangzd_cusplayer_LivePlayer_native_1release(JNIEnv *env, jobject instance) {
+
+    if (window) {
+        ANativeWindow_release(window);
+        window = 0;
+    }
+
+    if (javaCallHelper) {
+        DELETE(javaCallHelper)
+    }
+
 }

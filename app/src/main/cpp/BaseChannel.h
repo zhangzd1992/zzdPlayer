@@ -51,6 +51,21 @@ public:
     }
     virtual void play() =0;
     virtual void stop() =0 ;
+    void stopWork() {
+        frame_queue.setWork(0);
+        pkt_queue.setWork(0);
+    }
+
+    void startWork() {
+        frame_queue.setWork(1);
+        pkt_queue.setWork(1);
+    }
+
+    void clear() {
+        frame_queue.clear();
+        pkt_queue.clear();
+    }
+
 
     SafeQueue<AVPacket *> pkt_queue;
     SafeQueue<AVFrame *> frame_queue;

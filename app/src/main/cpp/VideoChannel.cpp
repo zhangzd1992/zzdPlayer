@@ -60,7 +60,7 @@ void VideoChannel::play() {
 }
 
 void VideoChannel::stop() {
-
+    isPlaying = 0;
 }
 
 //将packet队列中的packet取出，解析成frame
@@ -188,6 +188,10 @@ void VideoChannel::setFps(int fps) {
 
 void VideoChannel::setAudioChannel(AudioChannel *audioChannel) {
     this->audioChannel = audioChannel;
+}
+
+VideoChannel::~VideoChannel() {
+
 }
 
 

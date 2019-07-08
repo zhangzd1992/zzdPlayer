@@ -16,6 +16,9 @@ import java.io.File;
 public class MainActivity extends AppCompatActivity implements LivePlayer.OnPrepareListener, SeekBar.OnSeekBarChangeListener {
     LivePlayer livePlayer;
     SeekBar seekBar;
+    //    可以触摸
+    private boolean isTouch;
+    private boolean isSeek;
 
 
     @Override
@@ -32,22 +35,46 @@ public class MainActivity extends AppCompatActivity implements LivePlayer.OnPrep
         livePlayer.setDataSource(file.getAbsolutePath());
         livePlayer.setOnPrepareListener(this);
         seekBar.setOnSeekBarChangeListener(this);
+        livePlayer.setOnProgressListener(new LivePlayer.OnProgressListener() {
+            @Override
+            public void onProgress(final int progress) {
+                Log.e("progress","" + progress);
+                if (!isTouch) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            int duration = livePlayer.getDuration();
+                            if (duration != 0) {
+                                if (isSeek) {
+                                    isSeek = false;
+                                    return;
+                                }
+                                seekBar.setProgress(progress * 100 /duration);
+                            }
+
+                        }
+                    });
+                }
+
+            }
+        });
     }
 
     @Override
     public void onPrepare() {
         final int duration = livePlayer.getDuration();
         Log.e("duration","" + duration);
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                seekBar.setVisibility(View.VISIBLE);
-                seekBar.setMax(duration);
-            }
-        });
-
+        if (duration != 0) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    seekBar.setVisibility(View.VISIBLE);
+                }
+            });
+        }
         //初始化FFmpeg成功后，开始解析视频
         livePlayer.start();
+
     }
 
     public void play(View view) {
@@ -69,11 +96,12 @@ public class MainActivity extends AppCompatActivity implements LivePlayer.OnPrep
             Log.i("cbs","isGranted == "+isGranted);
             if (!isGranted) {
                 this.requestPermissions(
-                        new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission
-                                .ACCESS_FINE_LOCATION,
+                        new String[]{
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                                Manifest.permission.ACCESS_FINE_LOCATION,
                                 Manifest.permission.READ_EXTERNAL_STORAGE,
-                                Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                        102);
+                                Manifest.permission.WRITE_EXTERNAL_STORAGE
+                        }, 102);
             }
         }
 
@@ -88,14 +116,20 @@ public class MainActivity extends AppCompatActivity implements LivePlayer.OnPrep
 
     @Override
     public void onStartTrackingTouch(SeekBar seekBar) {
-
+        isTouch = true;
     }
 
 
     @Override
     public void onStopTrackingTouch(SeekBar seekBar) {
-        int seekTime = livePlayer.getDuration() * seekBar.getProgress() * 100;
-        livePlayer.set
+        isTouch = false;
+        isSeek = true;
+        int seekTime = livePlayer.getDuration() * seekBar.getProgress() / 100;
+        livePlayer.seek(seekTime);
 
+    }
+
+    public void stop(View view) {
+        livePlayer.stop();
     }
 }

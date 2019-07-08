@@ -31,10 +31,15 @@ public:
     void setRenderFrame(RenderFrame renderFrame);
     int getDuration();
 
-private:
+    void seek(int seek);
+
+    void stop();
+
+public:
     char * url;
     pthread_t pid_prepare;    //初始化ffmpeg 线程索引
     pthread_t pid_decode;     //解码子线程索引
+    pthread_t pid_stop;     //停止线程
     JavaCallHelper *javaCallHelper;
     VideoChannel *videoChannel;
     AudioChannel *audioChannel;
@@ -42,6 +47,10 @@ private:
     AVFormatContext *avFormatContext;
     RenderFrame renderFrame;
     int duration = 0;
+    pthread_mutex_t seekMutex;
+    bool isSeek = 0;
+
+
 
 
 };

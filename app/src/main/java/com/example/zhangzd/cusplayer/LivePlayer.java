@@ -46,6 +46,21 @@ public class LivePlayer implements SurfaceHolder.Callback{
         native_start();
     }
 
+    public void seek(final int seekTime) {
+        new Thread(){
+            @Override
+            public void run() {
+                native_seek(seekTime);
+            }
+        }.start();
+    }
+
+    public void stop() {
+        native_stop();
+        native_release();
+
+    }
+
     public interface OnPrepareListener {
          void onPrepare();
     }
@@ -113,4 +128,7 @@ public class LivePlayer implements SurfaceHolder.Callback{
     public native void native_set_surface(Surface surface);
     public native void native_prepare(String dataSource);
     public native int native_getDuration();
+    public native void native_seek(int progress);
+    public native void native_stop();
+    public native void native_release();
 }

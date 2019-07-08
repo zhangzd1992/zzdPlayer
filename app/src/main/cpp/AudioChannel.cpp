@@ -60,7 +60,7 @@ void AudioChannel::play() {
 }
 
 void AudioChannel::stop() {
-
+    isPlaying = 0;
 }
 
 /**
@@ -216,8 +216,17 @@ int AudioChannel::getPcm() {
 
         break;
     }
+    if (javaCallHelper) {
+        javaCallHelper->onProgress(THREAD_CHILD, clock);
+    }
     releaseAvFrame(frame);
     return data_size;
 
 }
+
+AudioChannel::~AudioChannel() {
+    free(buffer);
+    buffer = 0;
+}
+
 

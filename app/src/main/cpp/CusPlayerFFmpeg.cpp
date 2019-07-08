@@ -17,6 +17,7 @@ CusPlayerFFmpeg::CusPlayerFFmpeg(const char *dataSource, JavaCallHelper *pHelper
     url = new char[strlen(dataSource) + 1];
     strcpy(url, dataSource);
     this->javaCallHelper = pHelper;
+    duration = 0;
 }
 
 void *prepareFFmpeg_(void *args) {
@@ -45,7 +46,7 @@ void CusPlayerFFmpeg::prepareFfmpeg() {
         }
         return;
     }
-    duration = static_cast<int>(avFormatContext->duration) / 1000000;
+    duration = avFormatContext->duration / 1000000;
 
     for (int i = 0; i < avFormatContext->nb_streams; ++i) {
         AVStream *stream = avFormatContext->streams[i];
@@ -120,6 +121,9 @@ void CusPlayerFFmpeg::prepare() {
 }
 
 CusPlayerFFmpeg::~CusPlayerFFmpeg() {
+    pthread_mutex_destroy(&seekMutex);
+    javaCallHelper = 0;
+    DELETE(url);
 }
 
 void *startThread(void *args) {
@@ -198,5 +202,74 @@ void CusPlayerFFmpeg::setRenderFrame(RenderFrame renderFrame) {
 
 int CusPlayerFFmpeg::getDuration() {
     return duration;
+}
+
+void CusPlayerFFmpeg::seek(int progress) {
+    if (progress < 0 || progress >= duration) {
+        LOGE("seek超过范围%d", progress);
+        return;
+    }
+
+    if (!avFormatContext) {
+        return;
+    }
+
+    LOGE("seek%d", progress);
+    LOGE("时长%d", duration);
+
+
+    pthread_mutex_lock(&seekMutex);
+    isSeek = 1;
+    int64_t seek =  progress * 1000000;
+    av_seek_frame(avFormatContext,-1,seek,AVSEEK_FLAG_BACKWARD);
+
+    if(audioChannel) {
+        audioChannel->stopWork();
+        audioChannel->clear();
+        audioChannel->startWork();
+    }
+
+    if(videoChannel) {
+        videoChannel->stopWork();
+        videoChannel->clear();
+        videoChannel->startWork();
+    }
+
+    pthread_mutex_unlock(&seekMutex);
+
+    isSeek = 0;
+
+}
+
+void *async_stop(void *args ){
+    CusPlayerFFmpeg *fFmpeg = static_cast<CusPlayerFFmpeg *>(args);
+    fFmpeg->isPlaying = 0;
+    pthread_join(fFmpeg->pid_prepare,0);
+
+    pthread_join(fFmpeg->pid_decode,0);
+    DELETE(fFmpeg->audioChannel);
+    DELETE(fFmpeg->videoChannel);
+
+    if(fFmpeg->avFormatContext) {
+        avformat_close_input(&fFmpeg->avFormatContext);
+        avformat_free_context(fFmpeg->avFormatContext);
+        fFmpeg->avFormatContext = NULL;
+    }
+
+    DELETE(fFmpeg)
+    return 0;
+}
+
+void CusPlayerFFmpeg::stop() {
+    if(audioChannel) {
+        DELETE(audioChannel->javaCallHelper);
+    }
+
+    if (videoChannel) {
+        DELETE(videoChannel->javaCallHelper);
+    }
+
+    isPlaying = 0;   //播放标志位设为0
+    pthread_create(&pid_stop,0,async_stop,this);
 }
 
